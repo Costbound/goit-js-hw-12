@@ -1,0 +1,87 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 32px;
+    color: #2E2F42;
+    font-family: "Montserrat";
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+}
+main {
+    width: 100%;
+}
+form {
+    padding-top: 36px;
+    display: flex;
+    gap: 8px;
+    margin: 0 auto 32px auto;
+    width: 371px;
+}
+.search-input {
+    width: 272px;
+    height: 40px;
+    border-radius: 4px;
+    background-color: #FFF;
+    outline: none;
+    padding: 8px 16px 8px 16px;
+    border: 1px solid #808080;
+    transition: border-color 250ms;
+}
+.search-input:hover {
+    border-color: #000;
+}
+.search-input:focus {
+    border-color: #4E75FF;
+}
+.search-btn {
+    cursor: pointer;
+    border: none;
+    width: 91px;
+    height: 40px;
+    border-radius: 8px;
+    background-color: #4E75FF;
+    color: #fff;
+    font-weight: 500;
+    transition: background-color 250ms;
+}
+.search-btn:hover {
+    background-color: #6C8CFF;
+}
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 20px;
+    gap: 24px;
+}
+.gallery-item {
+    width: calc((100% - 96px) / 5);
+    border: 1px solid #000;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.img-wrapper {
+    overflow: hidden;
+    flex-grow: 1;
+    height: 200px;
+}
+.gallery-img {
+    display: block;
+    width: auto;
+    min-height: 200px;
+}
+.img-info-list {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 20px;
+}
+.info-title,
+.info-text {
+    font-size: 14px;
+    text-transform: capitalize;
+    text-align: center;
+}
