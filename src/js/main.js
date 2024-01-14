@@ -24,62 +24,60 @@ const loader = document.createElement("span");
 loader.classList.add("loader");
 
 let page = 1;
-const searchParams = {
-  key: "40945002-e125ab8d3394997b1a8dc0871",
-  image_type: "photo",
-  orientation: "horizontal",
-  safesearch: true,
-  per_page: 200,
-};
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   page = 1;
-  moreBtn.classList.add("hidden");
-  gallery.append(loader);
-  const data = await imgRequest(`https://pixabay.com/api/`);
-  if (data) { // To avoid error in buldGallery() when bad respond from request (data = undefined)
-    const items = buildGallery(data);
-    gallery.innerHTML = items.join(" ");
-    simpleGallery.refresh();
-  }
+  createGallery(e);
 });
 
-moreBtn.addEventListener("click", async () => {
-  page += 1;
+moreBtn.addEventListener("click", async (e) => {
+  page++;
+  createGallery(e);
+})
+
+async function createGallery(e) {
   moreBtn.classList.add("hidden");
+  if (e.target.nodeName === "FORM") gallery.innerHTML = "";
   gallery.append(loader);
   const data = await imgRequest(`https://pixabay.com/api/`);
-  if (data) { // To avoid error in buldGallery() when bad respond from request (data = undefined)
-    const items = buildGallery(data);
+  const items = buildGallery(data.hits);
+  console.log(data.totalHits, data.hits.length);
+  console.log(data.totalHits * 2 > 40 * page)
+  if (data.hits.length > 0) {
     gallery.insertAdjacentHTML("beforeend", items.join(" "));
-    simpleGallery.refresh();
+    moreBtn.classList.remove("hidden");
+  } else {
+    if (e.target.nodeName === "FORM") {
+      iziToast.error();
+    } else if (e.target.nodeName === "BUTTON" && data.totalHits * 2 < 40 * page) {
+      iziToast.error({
+        message: "We're sorry, but you've reached the end of search results."
+      });
+    }
+    moreBtn.classList.add("hidden");
   }
+  simpleGallery.refresh();
   loader.remove();
-})
+}
 
 function imgRequest(url) {
   return axios(url, {
     params: {
-      ...searchParams,
+      key: "40945002-e125ab8d3394997b1a8dc0871",
+      image_type: "photo",
+      orientation: "horizontal",
+      safesearch: true,
+      per_page: 40,
       q: searchInput.value,
       page: page,
       }
   })
     .then(res => {
-        if (res.data.hits.length === 0 && page === 1) {
-          gallery.innerHTML = "";
-          return iziToast.error();
-        } else {
-          moreBtn.classList.remove("hidden");
-          return res.data.hits;
-        }
+      console.log(res.data)
+      return res.data;
     })
     .catch(err => {
-      if (err.code === "ERR_BAD_REQUEST") {
-        loader.remove();
-        iziToast.error();
-      }
       console.log(err);
     });
 }
@@ -121,8 +119,3 @@ function buildGallery(data) {
       </li>`
   })
 }
-
-
-
-
-
