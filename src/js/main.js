@@ -24,11 +24,17 @@ const loader = document.createElement("span");
 loader.classList.add("loader");
 
 let page = 1;
+let searchData;
+let itemHeight;
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   page = 1;
-  createGallery(e);
+  searchData = searchInput.value;
+  await createGallery(e);
+  try { // To prevent error if search result is 0
+    itemHeight = document.querySelector(".gallery-item").getBoundingClientRect().height;
+  } catch (err) { }
 });
 
 moreBtn.addEventListener("click", async (e) => {
@@ -41,16 +47,14 @@ async function createGallery(e) {
   if (e.target.nodeName === "FORM") gallery.innerHTML = "";
   gallery.append(loader);
   const data = await imgRequest(`https://pixabay.com/api/`);
-  const items = buildGallery(data.hits);
-  console.log(data.totalHits, data.hits.length);
-  console.log(data.totalHits * 2 > 40 * page)
-  if (data.hits.length > 0) {
+  if (data && data.hits.length > 0) {
+    const items = buildGallery(data.hits);
     gallery.insertAdjacentHTML("beforeend", items.join(" "));
     moreBtn.classList.remove("hidden");
   } else {
     if (e.target.nodeName === "FORM") {
       iziToast.error();
-    } else if (e.target.nodeName === "BUTTON" && data.totalHits * 2 < 40 * page) {
+    } else if (e.target.nodeName === "BUTTON" || data.totalHits * 2 < 40 * page) {
       iziToast.error({
         message: "We're sorry, but you've reached the end of search results."
       });
@@ -69,12 +73,11 @@ function imgRequest(url) {
       orientation: "horizontal",
       safesearch: true,
       per_page: 40,
-      q: searchInput.value,
+      q: searchData,
       page: page,
-      }
+    }
   })
     .then(res => {
-      console.log(res.data)
       return res.data;
     })
     .catch(err => {
@@ -119,3 +122,17 @@ function buildGallery(data) {
       </li>`
   })
 }
+
+// Scroll
+
+window.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  if (e.deltaY > 0) window.scrollBy({
+    top: itemHeight * 2,
+    behavior: "smooth",
+  });
+  if (e.deltaY < 0) window.scrollBy({
+    top: -itemHeight * 2,
+    behavior: "smooth"
+  });
+}, { passive: false })
