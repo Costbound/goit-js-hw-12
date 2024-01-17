@@ -5,12 +5,11 @@ import "simplelightbox/dist/simple-lightbox.min.css";
 import axios from "axios";
 
 const form = document.querySelector("form");
-const [searchInput] = form.elements;
+const [searchInput] = form.elements; // інпут є першим елементом форми, тому звертаюсь до нього так щоб зайвий раз не звертатися до DOM дерева
 const gallery = document.querySelector(".gallery");
 const moreBtn = document.querySelector(".more-btn");
 
 iziToast.settings({
-    message: "Sorry, there are no images matching your search query. Please try again!",
     position: "topRight",
     messageSize: "16px",
     displayMode: 2,
@@ -23,38 +22,47 @@ const simpleGallery = new SimpleLightbox(".gallery a", {
 const loader = document.createElement("span");
 loader.classList.add("loader");
 
-let page = 1;
-let searchData;
-let itemHeight;
+
+//  Глобальні змінні page, searchData, itemHeight тепер реалізовані через sessionStorage щоб уникнути ненавмисних модифікацій з інших частин коду.
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  page = 1;
-  searchData = searchInput.value;
-  await createGallery(e);
-  try { // To prevent error if search result is 0
-    itemHeight = document.querySelector(".gallery-item").getBoundingClientRect().height;
-  } catch (err) { }
+  sessionStorage.setItem("page", 1)
+  sessionStorage.setItem("searchData", searchInput.value);
+  const galleryCheck = await createGallery(e.target.nodeName); // Тепер в параметр передається тільки nodeName так як в середені функції використовується тільки він
+  // якщо до галереї було додано хочаб однин item згідно з тз отримаємо його висоту через getBoundingRect() і додаємо слухач на створення кастомного скрола з кроком в дві висоти item
+  // якщо після нового запросу не було знайдено ні одного зображення, то прибираємо слухач на скрол і повертаєтся дефолтний скрол браузера
+  if (galleryCheck.length > 0) { // Замінив бдлок try...catch на перевірку через if чи повернув запрос хоча б одну картинку
+    sessionStorage.setItem("itemHeight", document.querySelector(".gallery-item").getBoundingClientRect().height);
+    window.addEventListener("wheel", makeAlternativeScroll, { passive: false });
+  } else {
+    window.removeEventListener("wheel", makeAlternativeScroll, { passive: false });
+  }
+  // Якщо не прибирати дефолтний скрол через e.preventDefault() + passive: false, то буде два скроли одночасно.
+  // Це добре видно якщо в браузері стоїть м'який скрол і в makeAlternativeScroll() закоментити behavior: smoth
 });
 
 moreBtn.addEventListener("click", async (e) => {
-  page++;
-  createGallery(e);
+  sessionStorage.setItem("page", Number(sessionStorage.getItem("page")) + 1)
+  createGallery(e.target.nodeName); // Тепер в параметр передається тільки nodeName так як в середені функції використовується тільки він
 })
 
-async function createGallery(e) {
+async function createGallery(nodeName) {
   moreBtn.classList.add("hidden");
-  if (e.target.nodeName === "FORM") gallery.innerHTML = "";
+  if (nodeName === "FORM") gallery.innerHTML = ""; // Чистить галерею якщо був новий запрос на пошук
   gallery.append(loader);
-  const data = await imgRequest(`https://pixabay.com/api/`);
-  if (data && data.hits.length > 0) {
+  const data = await imgRequest(`https://pixabay.com/api/`) || { hits: -1 }; // повертає hits -1 при невдалому запросі щоб не викликати помилку при звернені к data.hits в подальшому коді
+  if (data.hits.length > 0) { // Створює та додажє в ДОМ зображення якщо запит повернув хочаб одне (при сабміті і при кліку по Load more)
     const items = buildGallery(data.hits);
     gallery.insertAdjacentHTML("beforeend", items.join(" "));
     moreBtn.classList.remove("hidden");
-  } else {
-    if (e.target.nodeName === "FORM") {
-      iziToast.error();
-    } else if (e.target.nodeName === "BUTTON" || data.totalHits * 2 < 40 * page) {
+  } else if (data.hits !== -1) { // Перевірка чи був запит до сервера вдалий
+    // Далі ідуть месседжи для нового пошуку і для load more, якщо зображень не було знайдено
+    if (nodeName === "FORM") {
+      iziToast.error({
+        message: "Sorry, there are no images matching your search query. Please try again!",
+      });
+    } else if (nodeName === "BUTTON" || data.totalHits * 2 < 40 * page) {
       iziToast.error({
         message: "We're sorry, but you've reached the end of search results."
       });
@@ -63,6 +71,7 @@ async function createGallery(e) {
   }
   simpleGallery.refresh();
   loader.remove();
+  return data.hits // фідбєк до слухача на форму
 }
 
 function imgRequest(url) {
@@ -73,14 +82,18 @@ function imgRequest(url) {
       orientation: "horizontal",
       safesearch: true,
       per_page: 40,
-      q: searchData,
-      page: page,
+      q: sessionStorage.getItem("searchData"),
+      page: Number(sessionStorage.getItem("page"))
     }
   })
     .then(res => {
       return res.data;
     })
     .catch(err => {
+      // Виводить месседж з помилкою для користувача та більш детальну інформацію в консоль
+      iziToast.error({
+        message: `Error: ${err.message}`
+      })
       console.log(err);
     });
 }
@@ -125,8 +138,9 @@ function buildGallery(data) {
 
 // Scroll
 
-window.addEventListener("wheel", (e) => {
+function makeAlternativeScroll(e) {
   e.preventDefault();
+  const itemHeight = Number(sessionStorage.getItem("itemHeight"));
   if (e.deltaY > 0) window.scrollBy({
     top: itemHeight * 2,
     behavior: "smooth",
@@ -135,4 +149,4 @@ window.addEventListener("wheel", (e) => {
     top: -itemHeight * 2,
     behavior: "smooth"
   });
-}, { passive: false })
+}
